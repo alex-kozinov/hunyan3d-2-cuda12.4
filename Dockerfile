@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # --------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-venv \
-    git tmux wget curl ca-certificates \
+    git tmux wget curl ca-certificates openssh-server nginx \
     libgl1-mesa-glx libglib2.0-0 libopengl0 \
     ffmpeg \
     build-essential pkg-config \
@@ -23,7 +23,16 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
     python -m pip install --upgrade pip setuptools wheel
 
 # --------------------------------------------------------
-# 2. Install PyTorch (2.6.0 + CUDA 12.4 runtime)
+# 2. Prepare host (SSH, NGINX)
+# --------------------------------------------------------
+RUN rm -f /etc/ssh/ssh_host_*
+
+# NGINX Proxy
+COPY proxy/nginx.conf /etc/nginx/nginx.conf
+COPY proxy/readme.html /usr/share/nginx/html/readme.html
+
+# --------------------------------------------------------
+# 3. Install PyTorch (2.6.0 + CUDA 12.4 runtime)
 # --------------------------------------------------------
 RUN pip install \
     "torch==2.6.0+cu124" \
@@ -31,18 +40,18 @@ RUN pip install \
     --index-url https://download.pytorch.org/whl/cu124
 
 # --------------------------------------------------------
-# 3. HuggingFace + ускоренная загрузка моделей
+# 4. HuggingFace + ускоренная загрузка моделей
 # --------------------------------------------------------
 RUN pip install -U "huggingface_hub[cli]" hf_transfer
 
 # --------------------------------------------------------
-# 4. JupyterLab (и при желании ipykernel)
+# 5. JupyterLab (и при желании ipykernel)
 # --------------------------------------------------------
 RUN pip install jupyterlab ipykernel && \
     python -m ipykernel install --user --name py310 --display-name "Python 3.10 (CUDA 12.x)"
 
 # --------------------------------------------------------
-# 5. Set up workspace and prepare project
+# 6. Set up workspace and prepare project
 # --------------------------------------------------------
 WORKDIR /workspace
 
@@ -65,7 +74,7 @@ RUN cd hy3dgen/texgen/differentiable_renderer && \
     python setup.py install
     
 # --------------------------------------------------------
-# 6. Start Script / entrypoint
+# 7. Start Script / entrypoint
 # --------------------------------------------------------
 COPY scripts/start.sh /start.sh
 RUN chmod 755 /start.sh
